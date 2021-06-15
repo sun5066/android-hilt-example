@@ -1,9 +1,9 @@
 package github.sun5066.myapplication
 
 import android.app.Application
-import android.content.Context
-import android.util.Log
-import androidx.lifecycle.*
+import androidx.lifecycle.LiveData
+import androidx.lifecycle.MutableLiveData
+import androidx.lifecycle.SavedStateHandle
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 
@@ -11,7 +11,7 @@ import javax.inject.Inject
 class TodoViewModel @Inject constructor(
     application: Application,
     private val savedStateHandle: SavedStateHandle
-) : AndroidViewModel(application) {
+) : BaseViewModel(application) {
 
     private val _str = MutableLiveData("")
     val str: LiveData<String> get() = _str
