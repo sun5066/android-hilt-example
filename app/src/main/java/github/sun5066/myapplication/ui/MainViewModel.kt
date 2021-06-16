@@ -1,14 +1,15 @@
-package github.sun5066.myapplication
+package github.sun5066.myapplication.ui
 
 import android.app.Application
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.SavedStateHandle
 import dagger.hilt.android.lifecycle.HiltViewModel
+import github.sun5066.myapplication.ui.base.BaseViewModel
 import javax.inject.Inject
 
 @HiltViewModel
-class TodoViewModel @Inject constructor(
+class MainViewModel @Inject constructor(
     application: Application,
     private val savedStateHandle: SavedStateHandle
 ) : BaseViewModel(application) {

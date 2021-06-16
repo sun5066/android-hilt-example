@@ -1,4 +1,4 @@
-package github.sun5066.myapplication
+package github.sun5066.myapplication.ui.base
 
 import android.os.Bundle
 import androidx.annotation.LayoutRes
