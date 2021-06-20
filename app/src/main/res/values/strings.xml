@@ -1,3 +1,5 @@
 <resources>
     <string name="app_name">My Application</string>
+    <string name="text_show_keyboard">Show Keyboard</string>
+    <string name="text_hide_keyboard">Hide Keyboard</string>
 </resources>

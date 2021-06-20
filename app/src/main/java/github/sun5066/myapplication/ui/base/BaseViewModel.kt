@@ -2,6 +2,8 @@ package github.sun5066.myapplication.ui.base
 
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
+import io.reactivex.disposables.CompositeDisposable
+import io.reactivex.disposables.Disposable
 
 abstract class BaseViewModel(application: Application) : AndroidViewModel(application) {
 
@@ -11,5 +13,8 @@ abstract class BaseViewModel(application: Application) : AndroidViewModel(applic
      *
      * @since 21.06.16
      * */
+
+    protected val mDisposable: CompositeDisposable by lazy { CompositeDisposable() }
+
 
 }
