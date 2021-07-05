@@ -5,7 +5,6 @@ import android.view.View
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.SavedStateHandle
-import androidx.lifecycle.Transformations
 import dagger.hilt.android.lifecycle.HiltViewModel
 import github.sun5066.myapplication.R
 import github.sun5066.myapplication.ui.base.BaseNavigator
@@ -24,18 +23,22 @@ class MainViewModel @Inject constructor(
 ) : BaseViewModel(application) {
 
     private var mNavigator: BaseNavigator? = null
-    private val netDispatcher = newSingleThreadContext(name = "ServiceCall") // 스레드풀 디스패처
+    private val mIoDispatcher = newFixedThreadPoolContext(2, "IO") // 스레드풀 디스패처
     private val factory = DocumentBuilderFactory.newInstance()
+    private val feeds = listOf(
+        "https://www.npr.org/rss/rss.php?id=1001",
+        "http://rss.cnn.com/rss/cnn_topstories.rss",
+        "http://feeds.foxnews.com/foxnews/politics?format=xml"
+    )
 
-    private val _str = MutableLiveData("")
-    private val _newCount = MutableLiveData(0)
-    val str: LiveData<String> get() = _str
-    val newCount: LiveData<String> get() = Transformations.map(_newCount) { "Found $it News" }
+    private val _failed = MutableLiveData("")
+    private val _news = MutableLiveData("")
+    val failed: LiveData<String> get() = _failed
+    val news: LiveData<String> get() = _news
 
 
     fun init(str: String, navigator: BaseNavigator) {
         mNavigator = navigator
-        _str.value = str
 
         asyncLoadNews()
     }
@@ -47,27 +50,42 @@ class MainViewModel @Inject constructor(
         }
     }
 
-    private fun asyncLoadNews() = GlobalScope.launch(netDispatcher) {
-        val headlines = fetchRssHeadlines()
+    @ExperimentalCoroutinesApi
+    private fun asyncLoadNews() = GlobalScope.launch {
+        val requests = mutableListOf<Deferred<Sequence<String>>>()
+        feeds.mapTo(requests) { asyncFetchHeadlines(it, mIoDispatcher) }
+
+        requests.forEach {
+            it.join()
+        }
+        val headlines = requests
+            .filter { !it.isCancelled }
+            .flatMap { it.getCompleted() }
+
+        val failed = requests
+            .filter { it.isCancelled }
 
         launch(Dispatchers.Main) { // 코루틴 스코프
-            _newCount.value = headlines.size
+            _news.value = "Found ${headlines.size} News in ${requests.size} feeds"
+
+            failed.size.takeIf { it > 0 }.apply {
+                _failed.value = "failed: ${failed.size}"
+            }
         }
     }
 
-    private fun fetchRssHeadlines(): List<String> {
-        val builder = factory.newDocumentBuilder()
-        val xml = builder.parse("https://www.npr.org/rss/rss.php?id=1001")
-        val news = xml.getElementsByTagName("channel").item(0)
-        return (0 until news.childNodes.length)
-            .asSequence()
-            .map { news.childNodes.item(it) }
-            .filter { Node.ELEMENT_NODE == it.nodeType }
-            .map { it as Element }
-            .filter { "item" == it.tagName }
-            .map {
-                it.getElementsByTagName("title").item(0).textContent
-            }
-            .toList()
-    }
+    private fun asyncFetchHeadlines(feed: String, dispatcher: CoroutineDispatcher) = GlobalScope.async(dispatcher) {
+            val builder = factory.newDocumentBuilder()
+            val xml = builder.parse(feed)
+            val news = xml.getElementsByTagName("channel").item(0)
+            (0 until news.childNodes.length)
+                .asSequence()
+                .map { news.childNodes.item(it) }
+                .filter { Node.ELEMENT_NODE == it.nodeType }
+                .map { it as Element }
+                .filter { "item" == it.tagName }
+                .map {
+                    it.getElementsByTagName("title").item(0).textContent
+                }
+        }
 }
