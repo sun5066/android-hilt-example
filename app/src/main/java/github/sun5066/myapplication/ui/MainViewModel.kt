@@ -7,6 +7,8 @@ import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.SavedStateHandle
 import dagger.hilt.android.lifecycle.HiltViewModel
 import github.sun5066.myapplication.R
+import github.sun5066.myapplication.model.ArticleData
+import github.sun5066.myapplication.model.FeedData
 import github.sun5066.myapplication.ui.base.BaseNavigator
 import github.sun5066.myapplication.ui.base.BaseViewModel
 import kotlinx.coroutines.*
@@ -26,9 +28,10 @@ class MainViewModel @Inject constructor(
     private val mIoDispatcher = newFixedThreadPoolContext(2, "IO") // 스레드풀 디스패처
     private val factory = DocumentBuilderFactory.newInstance()
     private val feeds = listOf(
-        "https://www.npr.org/rss/rss.php?id=1001",
-        "http://rss.cnn.com/rss/cnn_topstories.rss",
-        "http://feeds.foxnews.com/foxnews/politics?format=xml"
+        FeedData("npr", "https://www.npr.org/rss/rss.php?id=1001"),
+        FeedData("cnn", "http://rss.cnn.com/rss/cnn_topstories.rss"),
+        FeedData("fox", "http://feeds.foxnews.com/foxnews/politics?format=xml"),
+        FeedData("inv", "htt:throwable")
     )
 
     private val _failed = MutableLiveData("")
@@ -52,13 +55,13 @@ class MainViewModel @Inject constructor(
 
     @ExperimentalCoroutinesApi
     private fun asyncLoadNews() = GlobalScope.launch {
-        val requests = mutableListOf<Deferred<Sequence<String>>>()
-        feeds.mapTo(requests) { asyncFetchHeadlines(it, mIoDispatcher) }
+        val requests = mutableListOf<Deferred<Sequence<ArticleData>>>()
+        feeds.mapTo(requests) { asyncFetchArticles(it, mIoDispatcher) }
 
         requests.forEach {
             it.join()
         }
-        val headlines = requests
+        val articles = requests
             .filter { !it.isCancelled }
             .flatMap { it.getCompleted() }
 
@@ -66,7 +69,7 @@ class MainViewModel @Inject constructor(
             .filter { it.isCancelled }
 
         launch(Dispatchers.Main) { // 코루틴 스코프
-            _news.value = "Found ${headlines.size} News in ${requests.size} feeds"
+            _news.value = "Found ${articles.size} News in ${requests.size} feeds"
 
             failed.size.takeIf { it > 0 }.apply {
                 _failed.value = "failed: ${failed.size}"
@@ -74,9 +77,9 @@ class MainViewModel @Inject constructor(
         }
     }
 
-    private fun asyncFetchHeadlines(feed: String, dispatcher: CoroutineDispatcher) = GlobalScope.async(dispatcher) {
+    private fun asyncFetchArticles(feed: FeedData, dispatcher: CoroutineDispatcher) = GlobalScope.async(dispatcher) {
             val builder = factory.newDocumentBuilder()
-            val xml = builder.parse(feed)
+            val xml = builder.parse(feed.url)
             val news = xml.getElementsByTagName("channel").item(0)
             (0 until news.childNodes.length)
                 .asSequence()
@@ -85,7 +88,15 @@ class MainViewModel @Inject constructor(
                 .map { it as Element }
                 .filter { "item" == it.tagName }
                 .map {
-                    it.getElementsByTagName("title").item(0).textContent
+                    val title = it.getElementsByTagName("title")
+                        .item(0)
+                        .textContent
+
+                    val summary = it.getElementsByTagName("description")
+                        .item(0)
+                        .textContent
+
+                    ArticleData(feed.name, title, summary)
                 }
         }
 }
