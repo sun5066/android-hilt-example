@@ -28,8 +28,10 @@ class MainActivity : BaseActivity<ActivityMainBinding>(), BaseNavigator {
     }
 
     override fun keyBoardSwitch(isShow: Boolean) {
-        if (isShow) showKeyboard(mBinding.btnShowKeyboard)
-        else hideKeyboard(mBinding.btnHideKeyboard)
+        with(mBinding.btnHideKeyboard) {
+            if (isShow) showKeyboard()
+            else hideKeyboard()
+        }
     }
 
 }

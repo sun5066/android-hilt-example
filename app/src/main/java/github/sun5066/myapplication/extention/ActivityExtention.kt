@@ -4,15 +4,16 @@ import android.app.Activity
 import android.content.Context
 import android.view.View
 import android.view.inputmethod.InputMethodManager
+import android.widget.Toast
 
-fun Activity.showKeyboard(view: View) {
-    val inputManagerManager = getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
-    inputManagerManager.showSoftInput(view, InputMethodManager.SHOW_IMPLICIT)
+fun Activity.showLongToast(msg: String) {
+    showToast(this, msg, Toast.LENGTH_LONG)
 }
 
-fun Activity.hideKeyboard(view: View) {
-    currentFocus?.let {
-        val inputManagerManager = getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
-        inputManagerManager.hideSoftInputFromWindow(it.windowToken, 0)
-    }
+fun Activity.showShortToast(msg: String) {
+    showToast(this, msg, Toast.LENGTH_SHORT)
+}
+
+private fun showToast(context: Context, msg: String, length: Int) {
+    Toast.makeText(context, msg, length).show()
 }
